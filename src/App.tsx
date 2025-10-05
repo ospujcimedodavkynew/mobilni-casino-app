@@ -97,7 +97,7 @@ const App: React.FC = () => {
   }, [orders, customers, searchQuery, statusFilter]);
 
   return (
-    <div className="bg-slate-900 min-h-screen text-gray-200">
+    <div className="bg-slate-900 min-h-screen text-gray-200 font-sans">
       <Header
         onNewOrder={handleNewOrder}
         onNewCustomer={() => setIsCustomerFormOpen(true)}
