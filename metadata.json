@@ -1,0 +1,5 @@
+{
+  "name": "Casino Party Order Manager",
+  "description": "A web application for managing customers and orders for the CasinoParty.cz mobile casino service. It allows for tracking events, game tables, staff, and calculating prices.",
+  "requestFramePermissions": []
+}
