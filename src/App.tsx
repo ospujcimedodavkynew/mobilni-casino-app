@@ -9,7 +9,7 @@ import OrderCalendar from './components/OrderCalendar';
 import ViewSwitcher, { ViewMode } from './components/ViewSwitcher';
 import OrderFilters from './components/OrderFilters';
 import { Order, Customer, StaffMember, TableType, OrderStatus } from './types';
-import { INITIAL_ORDERS, INITIAL_CUSTOMERS, INITIAL_STAFF, DEFAULT_TABLE_PRICES } from './constants';
+import { INITIAL_ORDERS, INITIAL_CUSTOMERS, INITIAL_STAFF, DEFAULT_TABLE_PRICES, DEFAULT_TABLE_INVENTORY } from './constants';
 import { getFromStorage, saveToStorage } from './utils/storage';
 import OrderCard from './components/OrderCard';
 
@@ -18,6 +18,7 @@ const App: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>(() => getFromStorage('customers', INITIAL_CUSTOMERS));
   const [staff, setStaff] = useState<StaffMember[]>(() => getFromStorage('staff', INITIAL_STAFF));
   const [tablePrices, setTablePrices] = useState<Record<TableType, number>>(() => getFromStorage('tablePrices', DEFAULT_TABLE_PRICES));
+  const [tableInventory, setTableInventory] = useState<Record<TableType, number>>(() => getFromStorage('tableInventory', DEFAULT_TABLE_INVENTORY));
 
   const [isOrderFormOpen, setIsOrderFormOpen] = useState(false);
   const [isCustomerFormOpen, setIsCustomerFormOpen] = useState(false);
@@ -33,6 +34,7 @@ const App: React.FC = () => {
   useEffect(() => { saveToStorage('customers', customers); }, [customers]);
   useEffect(() => { saveToStorage('staff', staff); }, [staff]);
   useEffect(() => { saveToStorage('tablePrices', tablePrices); }, [tablePrices]);
+  useEffect(() => { saveToStorage('tableInventory', tableInventory); }, [tableInventory]);
 
   const handleNewOrder = () => {
     setEditingOrder(null);
@@ -74,8 +76,9 @@ const App: React.FC = () => {
     setStaff(prev => prev.filter(s => s.id !== id));
   };
   
-  const handleSavePrices = (newPrices: Record<TableType, number>) => {
+  const handleSaveSettings = (newPrices: Record<TableType, number>, newInventory: Record<TableType, number>) => {
     setTablePrices(newPrices);
+    setTableInventory(newInventory);
     setIsSettingsModalOpen(false);
   }
 
@@ -154,6 +157,8 @@ const App: React.FC = () => {
           customers={customers}
           staff={staff}
           tablePrices={tablePrices}
+          allOrders={orders}
+          tableInventory={tableInventory}
           onSave={handleSaveOrder}
           onClose={() => setIsOrderFormOpen(false)}
         />
@@ -169,7 +174,8 @@ const App: React.FC = () => {
       {isSettingsModalOpen && (
           <SettingsModal
             currentPrices={tablePrices}
-            onSave={handleSavePrices}
+            currentInventory={tableInventory}
+            onSave={handleSaveSettings}
             onClose={() => setIsSettingsModalOpen(false)}
           />
       )}

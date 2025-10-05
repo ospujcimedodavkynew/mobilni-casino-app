@@ -54,3 +54,11 @@ export const DEFAULT_TABLE_PRICES: Record<TableType, number> = {
   [TableType.DICE]: 5000,
   [TableType.PARTYZRCADLO]: 4000,
 };
+
+export const DEFAULT_TABLE_INVENTORY: Record<TableType, number> = {
+  [TableType.ROULETTE]: 2,
+  [TableType.BLACKJACK]: 4,
+  [TableType.POKER]: 3,
+  [TableType.DICE]: 2,
+  [TableType.PARTYZRCADLO]: 1,
+};

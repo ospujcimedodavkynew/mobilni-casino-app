@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Order, Customer, StaffMember, TableType, GameTable, OrderStatus } from '../types';
 
 interface OrderFormProps {
@@ -6,11 +6,13 @@ interface OrderFormProps {
   customers: Customer[];
   staff: StaffMember[];
   tablePrices: Record<TableType, number>;
+  allOrders: Order[];
+  tableInventory: Record<TableType, number>;
   onSave: (order: Order) => void;
   onClose: () => void;
 }
 
-const OrderForm: React.FC<OrderFormProps> = ({ order, customers, staff, tablePrices, onSave, onClose }) => {
+const OrderForm: React.FC<OrderFormProps> = ({ order, customers, staff, tablePrices, allOrders, tableInventory, onSave, onClose }) => {
   const [formData, setFormData] = useState<Omit<Order, 'id' | 'totalPrice'>>({
     customerId: order?.customerId || '',
     eventLocation: order?.eventLocation || '',
@@ -21,6 +23,32 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, customers, staff, tablePri
     status: order?.status || OrderStatus.PENDING,
   });
   const [totalPrice, setTotalPrice] = useState(order?.totalPrice || 0);
+
+  const availableTables = useMemo(() => {
+    if (!formData.eventDate) {
+      return tableInventory;
+    }
+
+    const bookedTablesOnDate = allOrders
+      .filter(o => 
+        o.id !== order?.id && 
+        o.eventDate === formData.eventDate && 
+        (o.status === OrderStatus.CONFIRMED || o.status === OrderStatus.PENDING)
+      )
+      .flatMap(o => o.tables)
+      .reduce((acc, table) => {
+        acc[table.type] = (acc[table.type] || 0) + table.quantity;
+        return acc;
+      }, {} as Record<TableType, number>);
+
+    const available: Record<TableType, number> = { ...tableInventory };
+    for (const type of Object.values(TableType)) {
+        const total = tableInventory[type] || 0;
+        const booked = bookedTablesOnDate[type] || 0;
+        available[type] = total - booked;
+    }
+    return available;
+  }, [formData.eventDate, allOrders, tableInventory, order]);
 
   useEffect(() => {
     const calculatePrice = () => {
@@ -38,17 +66,21 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, customers, staff, tablePri
   };
 
   const handleTableChange = (type: TableType, quantity: number) => {
+    const currentQuantityInOrder = order?.tables.find(t => t.type === type)?.quantity || 0;
+    const maxAllowed = (availableTables[type] ?? 0) + currentQuantityInOrder;
+    const newQuantity = Math.max(0, Math.min(quantity, maxAllowed));
+
     setFormData(prev => {
       const existingTable = prev.tables.find(t => t.type === type);
       let newTables: GameTable[];
       if (existingTable) {
-        if (quantity > 0) {
-          newTables = prev.tables.map(t => t.type === type ? { ...t, quantity } : t);
+        if (newQuantity > 0) {
+          newTables = prev.tables.map(t => t.type === type ? { ...t, quantity: newQuantity } : t);
         } else {
           newTables = prev.tables.filter(t => t.type !== type);
         }
-      } else if (quantity > 0) {
-        newTables = [...prev.tables, { type, quantity }];
+      } else if (newQuantity > 0) {
+        newTables = [...prev.tables, { type, quantity: newQuantity }];
       } else {
         newTables = prev.tables;
       }
@@ -125,19 +157,32 @@ const OrderForm: React.FC<OrderFormProps> = ({ order, customers, staff, tablePri
                  <div>
                     <h4 className="text-md font-medium text-gray-300 mb-2">Herní stoly</h4>
                     <div className="space-y-2">
-                        {Object.values(TableType).map(type => (
-                            <div key={type} className="flex items-center justify-between">
-                                <label htmlFor={`table_${type}`} className="text-white">{type}</label>
-                                <input
-                                    type="number"
-                                    id={`table_${type}`}
-                                    min="0"
-                                    value={formData.tables.find(t => t.type === type)?.quantity || 0}
-                                    onChange={e => handleTableChange(type, parseInt(e.target.value, 10))}
-                                    className="w-20 bg-slate-700 border border-slate-600 rounded-md py-1 px-2 text-white text-center"
-                                />
-                            </div>
-                        ))}
+                        {Object.values(TableType).map(type => {
+                            const currentQuantityInOrder = order?.tables.find(t => t.type === type)?.quantity || 0;
+                            const available = availableTables[type] ?? 0;
+                            const maxAllowed = available + currentQuantityInOrder;
+                            
+                            return (
+                                <div key={type} className="flex items-center justify-between">
+                                    <div>
+                                        <label htmlFor={`table_${type}`} className="text-white">{type}</label>
+                                        <span className={`text-xs ml-2 ${available > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                            (Dostupno: {available})
+                                        </span>
+                                    </div>
+                                    <input
+                                        type="number"
+                                        id={`table_${type}`}
+                                        min="0"
+                                        max={maxAllowed}
+                                        value={formData.tables.find(t => t.type === type)?.quantity || 0}
+                                        onChange={e => handleTableChange(type, parseInt(e.target.value, 10))}
+                                        className="w-20 bg-slate-700 border border-slate-600 rounded-md py-1 px-2 text-white text-center disabled:opacity-50"
+                                        disabled={maxAllowed === 0}
+                                    />
+                                </div>
+                            )
+                        })}
                     </div>
                  </div>
                  <div>
